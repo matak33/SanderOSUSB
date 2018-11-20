@@ -1,0 +1,25 @@
+\> PCI...
+PCI: detecting devices....
+PCI: device detected, bridge device:  host bridge
+PCI: device detected, bridge device:  ISA bridge
+PCI: device detected, mass storage device:  IDE controller
+PCI: device detected, serial buss controller:  USB controller, UHCI [USB 1]
+PCI: device detected, bridge device:  bridge
+PCI: device detected, serial buss controller:  USB controller, XHCI [USB 3]
+XHCI: RAWBASE 40000000
+XHCI: ADDITION 50
+1912 | 1912 | 15 | 15 | 106 | 106 | 10 | 10 | 3002 | 3002 | c03 | c03 | 10 | 10
+| 0 | 0 | 0 | 0 | c000 | c000 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ffff | ffff | ffff | ffff | 0 |
+0 | 0 | 0 | 50 | 50 | 0 | 0 | 0 | 0 | 0 | 0 | 40b | 40b | 0 | 0 | 0 | 0 | 0 | 0
+| 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | c9c3 | c9c3 | 8 | 8 |
+0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2030 | 2030 | 0 | 0 | XHCI: Initialise X
+HCI (USB3.0) at memoryaddress 3fffffb0
+XHCI: USBCMD register before reset: 0
+XHCI: USBSTS register before reset: 0
+XHCI: USBCMD register after reset: 0
+XHCI: USBSTS register after reset: 0
+
+Shashwat 1 sss test2
+End of loading system!
+

@@ -63,6 +63,37 @@ void kernel_main(){
 }
 
 //
+// XHCI
+//
+//
+
+void init_xhci(unsigned long BAR0){
+	printstring("XHCI: Initialise XHCI (USB3.0) at memoryaddress ");
+	hexdump(BAR0);
+	printstring("\n");
+	volatile unsigned long* USBCMD = (volatile unsigned long *) BAR0;
+	volatile unsigned long* USBSTS = (volatile unsigned long *) BAR0+4;
+	printstring("XHCI: USBCMD register before reset: ");
+	hexdump(USBCMD[0]);
+	printstring("\n");
+	printstring("XHCI: USBSTS register before reset: ");
+	hexdump(USBSTS[0]);
+	printstring("\n");
+	USBCMD[0] = 0b00000000000000000000000000000010;
+	while(1){
+		if((USBCMD[0] & 0b00000000000000000000000000000010)==0){
+			break;
+		}
+	}
+	printstring("XHCI: USBCMD register after reset: ");
+	hexdump(USBCMD[0]);
+	printstring("\n");
+	printstring("XHCI: USBSTS register after reset: ");
+	hexdump(USBSTS[0]);
+	printstring("\n");
+}
+
+//
 // PCI
 //
 //
@@ -86,6 +117,27 @@ unsigned short pciConfigReadWord (unsigned char bus, unsigned char slot, unsigne
     /* (offset & 2) * 8) = 0 will choose the first word of the 32 bits register */
     tmp = (unsigned short)((inportl(PCI_DATA) >> ((offset & 2) * 8)) & 0xffff);
     return (tmp);
+}
+
+unsigned long pciBAR(unsigned bus,unsigned char slot,unsigned char func,unsigned char type){
+	int base = 16 + (type*4);
+	unsigned short vendorA = pciConfigReadWord(bus,slot,func,base);
+	unsigned short vendorB = pciConfigReadWord(bus,slot,func,base+2);
+	unsigned short vector[2];
+	vector[0] = vendorA;
+	vector[1] = vendorB;
+	unsigned long* result = ((unsigned long *)&vector);
+	return result[0];
+}
+
+void pciDumpBAR(unsigned bus,unsigned char slot,unsigned char func){
+	printstring("DEBUG: dump BARs:\n");
+	printstring("DEBUG: BAR0: ");hexdump(pciBAR(bus,slot,func,0));printstring("\n");
+	printstring("DEBUG: BAR1: ");hexdump(pciBAR(bus,slot,func,1));printstring("\n");
+	printstring("DEBUG: BAR2: ");hexdump(pciBAR(bus,slot,func,2));printstring("\n");
+	printstring("DEBUG: BAR3: ");hexdump(pciBAR(bus,slot,func,3));printstring("\n");
+	printstring("DEBUG: BAR4: ");hexdump(pciBAR(bus,slot,func,4));printstring("\n");
+	printstring("DEBUG: BAR5: ");hexdump(pciBAR(bus,slot,func,5));printstring("\n\n");
 }
 
 void init_pci(){
@@ -223,7 +275,18 @@ void init_pci(){
 							}else if(subsub==0x20){
 								printstring("EHCI [USB 2]");
 							}else if(subsub==0x30){
-								printstring("XHCI [USB 3]");
+								printstring("XHCI [USB 3]\n");
+								printstring("XHCI: RAWBASE ");
+								unsigned long BASE = pciBAR(bus,slot,function,0);
+								hexdump(BASE);
+								printstring("\n");
+								printstring("XHCI: ADDITION ");
+								unsigned short addition = pciConfigReadWord(bus,slot,function,52) & 0b0000000001111100;
+								hexdump(addition);printstring("\n");hexdump(pciConfigReadWord(bus,slot,function,0x34));
+								printstring("\n");
+								unsigned long *X = (unsigned long *)BASE;
+								hexdump(X[0x50]);printstring("\n");
+								init_xhci(BASE+0x400);//12
 							}else if(subsub==0x80){
 								printstring("unspecified");
 							}else if(subsub==0xFE){
@@ -282,7 +345,7 @@ void init_pci(){
 #define PS2_DATA 0x60
 #define PS2_STATUS 0x64
 #define PS2_COMMAND 0x64
-#define PS2_TIMEOUT 10
+#define PS2_TIMEOUT 5
 
 char getPS2StatusRegisterText(){
 	return inportb(PS2_STATUS);
