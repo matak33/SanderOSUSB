@@ -4,6 +4,8 @@ void printf(char *,...); 				//Our printf function
 char* convert(unsigned int, int); 		//Convert integer number into octal, hex, etc.
 unsigned char inportb (unsigned short _port);
 void outportb (unsigned short _port, unsigned char _data);
+unsigned short inportw(unsigned short _port);
+void outportw(unsigned short _port, unsigned short _data);
 unsigned long inportl(unsigned short _port);
 void outportl(unsigned short _port, unsigned long _data);
 void kernel_main();
@@ -65,6 +67,75 @@ void kernel_main(){
 	printf("Shashwat %d sss %s",1, "test2");
 	printstring("\nEnd of loading system!\n");
 	for(;;);
+}
+
+//
+// UHCI
+//
+//
+
+void init_uhci_port(unsigned long BAR){
+	printstring("UHCI: initialising port at BAR ");
+	hexdump(BAR);
+	printstring("\n");
+	printstring("UHCI: initial value ");
+	hexdump(inportw(BAR));
+	printstring("\n");
+	outportw(BAR,0b0000001010000100);
+	resetTicks();
+	while(1){
+		if(getTicks()==10){
+			break;
+		}
+	}
+	printstring("UHCI: end of initialising port ");
+	hexdump(BAR);
+	printstring(" ending initialising subroutine with value ");
+	hexdump(inportw(BAR));
+	printstring(" \n");
+}
+
+void init_uhci(unsigned long BAR){
+	printstring("UHCI: Initialising UHCI\n");
+	if((BAR & 0b00000000000000000000000000000001) > 0 ){
+		BAR--;
+		printstring("UHCI: using I/O port ");
+		hexdump(BAR);
+		printstring("\n");
+	}else{
+		printstring("UHCI: using memoryregister ");
+		hexdump(BAR);
+		printstring("\nUHCI: memoryregister not supported yet!\n");
+		return;
+	}
+//	outportw(BAR+0xC0,0x8f00);
+	outportw(BAR+0xC0,0x0000);
+	unsigned short beforereset1 = inportw(BAR);
+	printstring("UHCI: USBCMD register before reset: ");
+	hexdump(beforereset1);
+	printstring("\n");
+	unsigned short beforereset2 = inportw(BAR+2);
+	printstring("UHCI: USBSTS register before reset: ");
+	hexdump(beforereset2);
+	printstring("\n");
+	outportw(BAR,0b0000000000000000);
+	outportw(BAR,0b0000000000000010);
+	while(1){
+		volatile unsigned short duringreset = inportw(BAR);
+		if((duringreset & 0b0000000000000010)==0){
+			break;
+		}
+	}
+	printstring("UHCI: reset completed!\n");
+	printstring("UHCI: USBCMD register after reset: ");
+	hexdump(inportw(BAR));
+	printstring("\nUHCI: USBSTS register after reset: ");
+	hexdump(inportw(BAR+2));
+	printstring("\n");
+	outportw(BAR+4,0b0000000000001111);
+	printstring("UHCI: All interrupts enabled!\n");
+	init_uhci_port(BAR+0x10);
+	init_uhci_port(BAR+0x12);
 }
 
 //
@@ -272,7 +343,12 @@ void init_pci(){
 						}else if(sublca==0x03){
 							printstring(" USB controller, ");
 							if(subsub==0x00){
-								printstring("UHCI [USB 1]");
+								printstring("UHCI [USB 1]\n");
+								unsigned short BAR4E[2];
+								BAR4E[0] = pciConfigReadWord(bus,slot,function,0x20);
+								BAR4E[1] = pciConfigReadWord(bus,slot,function,0x22);
+								unsigned long BAR4 = ((unsigned long*)BAR4E)[0];
+								init_uhci(BAR4);
 							}else if(subsub==0x10){
 								printstring("OHCI [USB 1]");
 							}else if(subsub==0x20){
@@ -709,7 +785,7 @@ void resetTicks(){
 	ticks = 0;
 }
 
-void irq_timer(struct Registers *reg){
+void irq_timer(){
 	clock++;
 	outportb(0x20,0x20);
 	if(clock % 18 == 0){
@@ -796,6 +872,7 @@ void printf(char* format,...)
 { 
 	char *traverse; 
 	unsigned int i; 
+	signed int t;
 	char *s; 
 	
 	//Module 1: Initializing Myprintf's arguments 
@@ -821,13 +898,14 @@ void printf(char* format,...)
 						putc(i);
 						break; 
 						
-			case 'd' : i = va_arg(arg,int); 		//Fetch Decimal/Integer argument
-						if(i<0) 
+			case 'd' : 
+						t = va_arg(arg,int); 		//Fetch Decimal/Integer argument
+						if(t<0) 
 						{ 
-							i = -i;
+							t = -t;
 							putc('-'); 
 						} 
-						printstring(convert(i,10));
+						printstring(convert(t,10));
 						break; 
 						
 			case 'o': i = va_arg(arg,unsigned int); //Fetch Octal representation
@@ -963,14 +1041,14 @@ void setNormalInt(unsigned char num,unsigned long base){
 extern void isr_common_stub();
 extern void irq_common_stub();
 
-void fault_handler(struct Registers *reg){
+void fault_handler(){
 	printstring(" -= KERNEL PANIC =- ");
 	asm volatile("cli");
 	asm volatile("hlt");
 }
 
 
-void irq_handler(struct Registers *reg){
+void irq_handler(){
 	outportb(0x20, 0x20);
 	
 }
@@ -1066,6 +1144,16 @@ unsigned long inportl (unsigned short _port){
 
 void outportl (unsigned short _port, unsigned long _data){
     __asm__ __volatile__ ("outl %1, %0" : : "dN" (_port), "a" (_data));
+}
+
+unsigned short inportw (unsigned short _port){
+    unsigned short rv;
+    __asm__ __volatile__ ("inw %1, %0" : "=a" (rv) : "dN" (_port));
+    return rv;
+}
+
+void outportw (unsigned short _port, unsigned short _data){
+    __asm__ __volatile__ ("outw %1, %0" : : "dN" (_port), "a" (_data));
 }
 
 unsigned char inportb (unsigned short _port){
