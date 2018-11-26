@@ -117,6 +117,12 @@ idt_load:
     lidt [idtp]
     ret
     
+global uhciirq
+extern irq_uhci
+uhciirq:
+    call irq_uhci
+    iret
+    
 global serialirq
 extern irq_serial
 serialirq:

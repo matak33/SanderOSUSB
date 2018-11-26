@@ -69,10 +69,21 @@ void kernel_main(){
 	for(;;);
 }
 
+
 //
 // UHCI
 //
 //
+
+unsigned long *uhciframes = (unsigned long *) 0x9000;
+extern void uhciirq();
+
+void irq_uhci(){
+	printstring("UHCI: interrupt\n");
+	// EOI
+	outportb(0x20,0x20);
+	outportb(0xA0,0x20);
+}
 
 void init_uhci_port(unsigned long BAR){
 	printstring("UHCI: initialising port at BAR ");
@@ -81,7 +92,7 @@ void init_uhci_port(unsigned long BAR){
 	printstring("UHCI: initial value ");
 	hexdump(inportw(BAR));
 	printstring("\n");
-	outportw(BAR,0b0000001010000100);
+	outportw(BAR,0b0000000010000100);
 	resetTicks();
 	while(1){
 		if(getTicks()==10){
@@ -95,12 +106,14 @@ void init_uhci_port(unsigned long BAR){
 	printstring(" \n");
 }
 
-void init_uhci(unsigned long BAR){
+void init_uhci(unsigned long BAR,unsigned char intnum){
 	printstring("UHCI: Initialising UHCI\n");
 	if((BAR & 0b00000000000000000000000000000001) > 0 ){
 		BAR--;
 		printstring("UHCI: using I/O port ");
 		hexdump(BAR);
+		printstring(" and irq ");
+		hexdump(intnum);
 		printstring("\n");
 	}else{
 		printstring("UHCI: using memoryregister ");
@@ -132,10 +145,29 @@ void init_uhci(unsigned long BAR){
 	printstring("\nUHCI: USBSTS register after reset: ");
 	hexdump(inportw(BAR+2));
 	printstring("\n");
+	printstring("UHCI: default framecount register: ");
+	hexdump(inportw(BAR+0x06));
+	outportw(BAR+0x06,1);
+	printstring(" new value: 0\n");
 	outportw(BAR+4,0b0000000000001111);
-	printstring("UHCI: All interrupts enabled!\n");
+    	setNormalInt(intnum,(unsigned long)uhciirq);
+	printstring("UHCI: All interrupts enabled!\nUHCI: default FLBASEADD register: ");
+	hexdump(inportl(BAR+0x08));
+	outportl(BAR+0x08,0b10010000000000000000000000000000);
+	uhciframes[0] = 0xffffffff;
+	uhciframes[1] = 0xffffffff;
+	uhciframes[2] = 0xffffffff;
+	printstring("\nUHCI: default SOF register: ");
+	hexdump(inportb(BAR+0x0C));
+	printstring("\n");
+	outportw(BAR,0b0000000000000001);
+	while(1){
+	init_video();
 	init_uhci_port(BAR+0x10);
 	init_uhci_port(BAR+0x12);
+	hexdump(inportw(BAR));
+	printstring("\n");
+	}
 }
 
 //
@@ -348,7 +380,8 @@ void init_pci(){
 								BAR4E[0] = pciConfigReadWord(bus,slot,function,0x20);
 								BAR4E[1] = pciConfigReadWord(bus,slot,function,0x22);
 								unsigned long BAR4 = ((unsigned long*)BAR4E)[0];
-								init_uhci(BAR4);
+								unsigned char irqlne = (pciConfigReadWord(bus,slot,function,0x3C))&0xFF;
+								init_uhci(BAR4,irqlne);
 							}else if(subsub==0x10){
 								printstring("OHCI [USB 1]");
 							}else if(subsub==0x20){
