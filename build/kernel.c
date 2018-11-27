@@ -75,17 +75,38 @@ void kernel_main(){
 //
 //
 
-unsigned long *uhciframes = (unsigned long *) 0x9000;
+unsigned long uhciframes[5];
 extern void uhciirq();
+volatile unsigned long uhciBAR;
 
 void irq_uhci(){
-	printstring("UHCI: interrupt\n");
-	// EOI
+	//printstring("UHCI: interrupt\n");
+	unsigned short status = inportw(uhciBAR+0x02);
+	if(status & 0b0000000000011010){
+		printstring("UHCI: PANIC");
+		asm volatile ("cli\nhlt");
+		for(;;);
+	}else if(status & 1 ){
+		printstring("*");
+	}
+//	if(videomemory[2]=='-'){
+//		videomemory[2]='\\';
+//	}else if(videomemory[2]=='\\'){
+//		videomemory[2]='|';
+//	}else if(videomemory[2]=='|'){
+//		videomemory[2]='/';
+//	}else if(videomemory[2]=='/'){
+//		videomemory[2]='-';
+//	}else{
+//		videomemory[2]='-';
+//	}
+//	// EOI
 	outportb(0x20,0x20);
 	outportb(0xA0,0x20);
 }
 
 void init_uhci_port(unsigned long BAR){
+	uhciBAR = BAR;
 	printstring("UHCI: initialising port at BAR ");
 	hexdump(BAR);
 	printstring("\n");
@@ -153,21 +174,12 @@ void init_uhci(unsigned long BAR,unsigned char intnum){
     	setNormalInt(intnum,(unsigned long)uhciirq);
 	printstring("UHCI: All interrupts enabled!\nUHCI: default FLBASEADD register: ");
 	hexdump(inportl(BAR+0x08));
-	outportl(BAR+0x08,0b10010000000000000000000000000000);
-	uhciframes[0] = 0xffffffff;
-	uhciframes[1] = 0xffffffff;
-	uhciframes[2] = 0xffffffff;
-	printstring("\nUHCI: default SOF register: ");
-	hexdump(inportb(BAR+0x0C));
-	printstring("\n");
+	unsigned long uhciframesloc = (unsigned long)&uhciframes;
+	outportl(BAR+0x08,uhciframesloc<<12);
+	uhciframes[0] = 0x00000001;
+	uhciframes[1] = 0x00000001;
+	uhciframes[2] = 0x00000001;
 	outportw(BAR,0b0000000000000001);
-	while(1){
-	init_video();
-	init_uhci_port(BAR+0x10);
-	init_uhci_port(BAR+0x12);
-	hexdump(inportw(BAR));
-	printstring("\n");
-	}
 }
 
 //
