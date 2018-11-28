@@ -46,6 +46,7 @@ struct Registers{
     unsigned int eip, cs, eflags, useresp, ss;   /* pushed by the processor automatically */ 
 };
 unsigned char* videomemory = (unsigned char*)0xb8000;
+volatile unsigned long uhciBAR;
 
 void kernel_main(){
 	init_video();
@@ -66,6 +67,26 @@ void kernel_main(){
 	init_serial();
 	printf("Shashwat %d sss %s",1, "test2");
 	printstring("\nEnd of loading system!\n");
+//	outportw(uhciBAR,0b0000000000000001);
+	while(1){
+		
+		printstring("REG ");
+		hexdump(inportw(uhciBAR+0x00));
+		printstring(" STAT ");
+		hexdump(inportw(uhciBAR+0x02));
+		printstring(" PORTSC01 ");
+		hexdump(inportw(uhciBAR+0x10));
+		printstring(" PORTSC02 ");
+		hexdump(inportw(uhciBAR+0x12));
+		printstring("\n");
+		
+		resetTicks();
+		while(1){
+			if(getTicks()==10){
+				break;
+			}
+		}
+	}
 	for(;;);
 }
 
@@ -75,17 +96,42 @@ void kernel_main(){
 //
 //
 
+#define USBCMD 0x00
+#define USBSTS 0x02
+#define USBINT 0x04
+#define USBFNM 0x06
+#define USBFBR 0x08
+#define USBSOF 0x0C
+#define USBPR1 0x10
+#define USBPR2 0x12
+
+
 unsigned long uhciframes[5];
 extern void uhciirq();
-volatile unsigned long uhciBAR;
 
 void irq_uhci(){
 	//printstring("UHCI: interrupt\n");
-	unsigned short status = inportw(uhciBAR+0x02);
+	unsigned short status = inportw(uhciBAR+USBSTS);
 	if(status & 0b0000000000011010){
-		printstring("UHCI: PANIC");
-		asm volatile ("cli\nhlt");
-		for(;;);
+		printstring("UHCI: PANIC ");
+		if(status & 0b0000000000000010){
+			printstring(" usb-error-interrupt ");
+		}
+		if(status & 0b0000000000001000){
+			printstring(" host-system-error ");
+		}
+		if(status & 0b0000000000010000){
+			printstring(" host-controller-process-error ");
+		}
+		printstring("REG ");
+		hexdump(inportw(uhciBAR+USBCMD));
+		printstring(" STAT ");
+		hexdump(inportw(uhciBAR+USBSTS));
+		printstring(" PORTSC01 ");
+		hexdump(inportw(uhciBAR+USBPR1));
+		printstring(" PORTSC02 ");
+		hexdump(inportw(uhciBAR+USBPR2));
+		printstring("\n");
 	}else if(status & 1 ){
 		printstring("*");
 	}
@@ -101,19 +147,18 @@ void irq_uhci(){
 //		videomemory[2]='-';
 //	}
 //	// EOI
-	outportb(0x20,0x20);
 	outportb(0xA0,0x20);
+	outportb(0x20,0x20);
 }
 
 void init_uhci_port(unsigned long BAR){
-	uhciBAR = BAR;
 	printstring("UHCI: initialising port at BAR ");
 	hexdump(BAR);
 	printstring("\n");
 	printstring("UHCI: initial value ");
-	hexdump(inportw(BAR));
+	hexdump(inportw(BAR + USBCMD));
 	printstring("\n");
-	outportw(BAR,0b0000000010000100);
+	outportw(BAR + USBCMD,0b0000000010000100);
 	resetTicks();
 	while(1){
 		if(getTicks()==10){
@@ -123,7 +168,7 @@ void init_uhci_port(unsigned long BAR){
 	printstring("UHCI: end of initialising port ");
 	hexdump(BAR);
 	printstring(" ending initialising subroutine with value ");
-	hexdump(inportw(BAR));
+	hexdump(inportw(BAR+USBCMD));
 	printstring(" \n");
 }
 
@@ -143,43 +188,51 @@ void init_uhci(unsigned long BAR,unsigned char intnum){
 		return;
 	}
 //	outportw(BAR+0xC0,0x8f00);
-	outportw(BAR+0xC0,0x0000);
-	unsigned short beforereset1 = inportw(BAR);
+	uhciBAR = BAR;
+	outportw(BAR+0xC0,0x8f00);
+	unsigned short beforereset1 = inportw(BAR+USBCMD);
 	printstring("UHCI: USBCMD register before reset: ");
 	hexdump(beforereset1);
 	printstring("\n");
-	unsigned short beforereset2 = inportw(BAR+2);
+	unsigned short beforereset2 = inportw(BAR+USBSTS);
 	printstring("UHCI: USBSTS register before reset: ");
 	hexdump(beforereset2);
 	printstring("\n");
 	outportw(BAR,0b0000000000000000);
-	outportw(BAR,0b0000000000000010);
+	resetTicks();
 	while(1){
-		volatile unsigned short duringreset = inportw(BAR);
-		if((duringreset & 0b0000000000000010)==0){
+		if(getTicks()==10){
+			break;
+		}
+	}
+	outportw(BAR,0b0000000000000100);
+	while(1){
+		volatile unsigned short duringreset = inportw(BAR+USBCMD);
+		if((duringreset & 0b0000000000000110)==0){
 			break;
 		}
 	}
 	printstring("UHCI: reset completed!\n");
 	printstring("UHCI: USBCMD register after reset: ");
-	hexdump(inportw(BAR));
+	hexdump(inportw(BAR+USBCMD));
 	printstring("\nUHCI: USBSTS register after reset: ");
-	hexdump(inportw(BAR+2));
+	hexdump(inportw(BAR+USBSTS));
 	printstring("\n");
 	printstring("UHCI: default framecount register: ");
-	hexdump(inportw(BAR+0x06));
-	outportw(BAR+0x06,1);
+	hexdump(inportw(BAR+USBFNM));
+	outportw(BAR+USBFNM,0);
 	printstring(" new value: 0\n");
-	outportw(BAR+4,0b0000000000001111);
+	outportw(BAR+USBINT,0b0000000000001111);
     	setNormalInt(intnum,(unsigned long)uhciirq);
+	outportw(BAR+USBSOF,0x40);
 	printstring("UHCI: All interrupts enabled!\nUHCI: default FLBASEADD register: ");
-	hexdump(inportl(BAR+0x08));
+	hexdump(inportl(BAR+USBFBR));
 	unsigned long uhciframesloc = (unsigned long)&uhciframes;
-	outportl(BAR+0x08,uhciframesloc<<12);
+	outportl(BAR+USBFBR,uhciframesloc<<12);
 	uhciframes[0] = 0x00000001;
 	uhciframes[1] = 0x00000001;
 	uhciframes[2] = 0x00000001;
-	outportw(BAR,0b0000000000000001);
+//	outportw(BAR,0b0000000000000001);
 }
 
 //
