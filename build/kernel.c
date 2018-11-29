@@ -189,6 +189,12 @@ void init_uhci(unsigned long BAR,unsigned char intnum){
 	}
 //	outportw(BAR+0xC0,0x8f00);
 	uhciBAR = BAR;
+		printstring("UHCI: PORTSC01 ");
+		hexdump(inportw(uhciBAR+USBPR1));
+		printstring(" PORTSC02 ");
+		hexdump(inportw(uhciBAR+USBPR2));
+		printstring("\n");
+	return;
 	outportw(BAR+0xC0,0x8f00);
 	unsigned short beforereset1 = inportw(BAR+USBCMD);
 	printstring("UHCI: USBCMD register before reset: ");
@@ -201,14 +207,26 @@ void init_uhci(unsigned long BAR,unsigned char intnum){
 	outportw(BAR,0b0000000000000000);
 	resetTicks();
 	while(1){
-		if(getTicks()==10){
+		if(getTicks()==1){
 			break;
 		}
 	}
 	outportw(BAR,0b0000000000000100);
+//	while(1){
+//		volatile unsigned short duringreset = inportw(BAR+USBCMD);
+//		if((duringreset & 0b0000000000000110)==0){
+//			break;
+//		}
+//	}
+	resetTicks();
 	while(1){
-		volatile unsigned short duringreset = inportw(BAR+USBCMD);
-		if((duringreset & 0b0000000000000110)==0){
+		if(getTicks()==1){
+			break;
+		}
+	}
+	outportw(BAR,0b0000000000000000);
+	while(1){
+		if(getTicks()==1){
 			break;
 		}
 	}
