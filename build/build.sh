@@ -7,4 +7,4 @@ rm cdrom.iso
 cd ..
 grub-mkrescue -o SanderOSUSB/cdrom.iso SanderOSUSB
 cd SanderOSUSB
-qemu-system-i386 -kernel kernel.bin
+qemu-system-i386 -serial stdio -kernel kernel.bin

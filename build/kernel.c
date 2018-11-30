@@ -1,7 +1,5 @@
 #include "stdarg.h"
 
-void printf(char *,...); 				//Our printf function
-char* convert(unsigned int, int); 		//Convert integer number into octal, hex, etc.
 unsigned char inportb (unsigned short _port);
 void outportb (unsigned short _port, unsigned char _data);
 unsigned long inportl(unsigned short _port);
@@ -10,9 +8,14 @@ void kernel_main();
 
 // STRING
 void printstring(char* msg);
+void printrealstring(char* msg);
 void putc(char a);
 void init_video();
 void hexdump(unsigned long msg);
+void clearScreen();
+int dialog(int type,char* message,...);
+void printf(char *,...);
+char* convert(unsigned int, int);
 
 // GDT
 void init_gdt();
@@ -44,9 +47,22 @@ struct Registers{
     unsigned int eip, cs, eflags, useresp, ss;   /* pushed by the processor automatically */ 
 };
 unsigned char* videomemory = (unsigned char*)0xb8000;
+unsigned volatile char debugging = 0;
+int curx = 0;
+int cury = 0;
+unsigned volatile char keyboardtype = 0;
+unsigned volatile char mousetype = 0;
+unsigned volatile char mounttype = 0;
 
 void kernel_main(){
 	init_video();
+	clearScreen();
+	for(int i = 0 ; i < 60 ; i++){
+		videomemory[(160*20)+(20+(i*2))+1] = 0x70;
+	}
+	curx = 22;
+	cury = 20;
+	printrealstring("Loading core");
 	printstring("Welcome to the Sanderslando Kernel!!\n");
 	printstring("Loading core components...\n");
 	printstring("=> Global Description Table...\n");
@@ -58,12 +74,40 @@ void kernel_main(){
 	init_timer();
 	printstring("=> PS2...\n");
 	init_ps2();
-	printstring("=> PCI...\n");
-	init_pci();
 	printstring("=> Serial ports...\n");
 	init_serial();
-	printf("Shashwat %d sss %s",1, "test2");
-	printstring("\nEnd of loading system!\n");
+	
+	
+	for(int i = 0 ; i < 20 ; i++){
+		videomemory[(160*20)+(20+(i*2))+1] = 0x30;
+	}
+	curx = 22;
+	cury = 20;
+	printrealstring("Loading devices");
+	
+	printstring("=> PCI...\n");
+	init_pci();
+	
+	
+	for(int i = 0 ; i < 40 ; i++){
+		videomemory[(160*20)+(20+(i*2))+1] = 0x30;
+	}
+	curx = 22;
+	cury = 20;
+	printrealstring("Loading filesystems");
+	
+	
+	
+	for(int i = 0 ; i < 60 ; i++){
+		videomemory[(160*20)+(20+(i*2))+1] = 0x30;
+	}
+	curx = 22;
+	cury = 20;
+	printrealstring("finished!              ");
+	
+	clearScreen();
+	
+	dialog(1,"Kernel created by Sander and Shashwat\nKeyboard: %s\nMouse: %s\nCorefs: %s",(keyboardtype==0?"DISABLED":(keyboardtype==1?"PS/2":"USB")),(mousetype==0?"DISABLED":(mousetype==1?"PS/2":"USB")),(mounttype==0?"DISABLED":(mounttype==1?"CDROM":"FAT32")));
 	for(;;);
 }
 
@@ -73,7 +117,7 @@ void kernel_main(){
 //
 
 extern void serialirq();
-
+unsigned short defaultserial;
 
 unsigned int serial_received(unsigned short PORT) {
    return inportb(PORT + 5) & 1;
@@ -89,10 +133,24 @@ int is_transmit_empty(unsigned short PORT) {
    return inportb(PORT + 5) & 0x20;
 }
  
-void write_serial(char a,unsigned short PORT) {
-   while (is_transmit_empty(PORT) == 0);
  
-   outportb(PORT,a);
+ unsigned volatile char serialconnectdo = 1;
+ unsigned volatile char serialinitialised = 0;
+void write_serial(unsigned char a,unsigned short PORT) {
+	if(serialconnectdo==1 && serialinitialised == 1){
+		resetTicks();
+   		while (is_transmit_empty(PORT) == 0){
+   			if(getTicks()==10){
+   				serialconnectdo = 0;
+   				return;
+   			}
+   		}
+   		outportb(PORT,a);
+   	}else{
+   		if(debugging){
+   			putc(a);
+   		}
+   	}
 }
 
 void irq_serial(){
@@ -102,6 +160,7 @@ void irq_serial(){
 }
 
 void init_serial_device(unsigned short PORT) {
+	defaultserial = PORT;
    outportb(PORT + 1, 0x00);    // Disable all interrupts
    outportb(PORT + 3, 0x80);    // Enable DLAB (set baud rate divisor)
    outportb(PORT + 0, 0x03);    // Set divisor to 3 (lo byte) 38400 baud
@@ -111,6 +170,7 @@ void init_serial_device(unsigned short PORT) {
    outportb(PORT + 4, 0x0B);    // IRQs enabled, RTS/DSR set
    outportb(PORT + 1, 1);
    setNormalInt(4,(unsigned long)serialirq);
+   serialinitialised = 1;
 }
 
 void init_serial(){
@@ -562,6 +622,7 @@ int init_ps2_keyboard(){
 	if(!waitforps2ok()){goto error;}
 	
     	setNormalInt(1,(unsigned long)keyboardirq);
+    	keyboardtype = 1;
     	return 1;
     	
     	error:
@@ -612,6 +673,7 @@ int init_ps2_mouse(){
 	if(!waitforps2ok()){goto error;}
 	
     	setNormalInt(12,(unsigned long)mouseirq);
+    	mousetype = 1;
     	return 1;
     	
     	error:
@@ -709,7 +771,7 @@ void resetTicks(){
 	ticks = 0;
 }
 
-void irq_timer(struct Registers *reg){
+void irq_timer(){
 	clock++;
 	outportb(0x20,0x20);
 	if(clock % 18 == 0){
@@ -743,8 +805,6 @@ void init_timer(){
 
 
 int vidpnt = 0;
-int curx = 0;
-int cury = 0;
 
 void init_video(){
 	// set cursor shape
@@ -758,7 +818,87 @@ void init_video(){
 	cury = 0;
 }
 
-void printstring(char* message){
+int strlen(char* a){
+	int result = 0;
+	char deze = 0x00;
+	int pointer = 0;
+	while(1){
+		deze = a[pointer++];
+		result++;
+		if(deze==0x00){break;}
+	}
+	return result;
+}
+
+int dialog(int type,char* message,...){
+	
+	// scherm inkleuring
+	for(int Y = 8 ; Y < 17 ; Y++){
+		for(int X = 10 ; X < 70 ; X++){
+			videomemory[(Y*160)+(X*2)+0] = ' ';
+			videomemory[(Y*160)+(X*2)+1] = 0x47;
+		}
+	}
+	
+	// karakter tekenen
+	int Z = 0;
+	int iX = 13;
+	int iY = 10;
+	va_list arg; 
+	va_start(arg, message); 
+	while(1){
+		char deze = message[Z++];
+		if(deze==0x00){
+			break;
+		}else if(deze=='\n'){
+			iX = 13;
+			iY++;
+		}else if(deze=='%'){
+			deze = message[Z++];
+			if(deze=='c'){
+				unsigned char x = (unsigned char)va_arg(arg,unsigned int);
+				videomemory[(iY*160)+(iX*2)] = x;
+				iX++;
+			}else if(deze=='s'){
+				char* x = va_arg(arg,char*);
+				int i = 0;
+				while(1){
+					char z = x[i++];
+					if(z==0x00){
+						break;
+					}
+					videomemory[(iY*160)+(iX*2)] = z;
+					iX++;
+				}
+			}
+		}else{
+			videomemory[(iY*160)+(iX*2)] = deze;
+			iX++;
+		}
+		if(iX==65){
+			iX = 13;
+			iY++;
+		}
+		if(iY==20){
+			break;
+		}
+	}
+	va_end(arg); 
+	
+	// knoppen tekenen
+	if(type==1){
+		for(int b = 0 ; b < 6 ; b++){
+			videomemory[(15*160)+((b+38)*2)+1] = 0x12;
+		}
+		videomemory[(15*160)+((2+38)*2)+0] = 'O';
+		videomemory[(15*160)+((3+38)*2)+0] = 'K';
+	}
+	
+	return 0;
+}
+
+
+void printrealstring(char* message){
 	int a = 0;
 	char b = 0;
 	while((b=message[a++])!=0x00){
@@ -766,11 +906,28 @@ void printstring(char* message){
 	}
 }
 
+void printstring(char* message){
+	int a = 0;
+	char b = 0;
+	while((b=message[a++])!=0x00){
+		write_serial(b,defaultserial);
+	}
+}
+
+void clearScreen(){
+	for(unsigned int Y = 0 ; Y < 27 ; Y++){
+		for(unsigned int X = 0 ; X < 80 ; X++){
+			videomemory[(Y*160)+(X*2)] = ' ';
+			videomemory[(Y*160)+(X*2)+1] = 0x07; 
+		}
+	}
+}
+
 void putc(char a){
 	if(a!='\n'){
 		vidpnt = (curx*2)+(160*cury);
 		videomemory[vidpnt++] = a;
-		videomemory[vidpnt++] = 0x07;
+		vidpnt++;
 		curx++;
 	}
 	if(curx==80||a=='\n'){
@@ -785,7 +942,6 @@ void putc(char a){
 			int v2dpnt = (160*(1+i));
 			for(int z = 0 ; z < 160 ; z++){
 				videomemory[v1dpnt+z] = videomemory[v2dpnt+z];
-				videomemory[v2dpnt+z] = 0x00;
 			}
 		}
 	}
@@ -796,6 +952,7 @@ void printf(char* format,...)
 { 
 	char *traverse; 
 	unsigned int i; 
+	signed int t;
 	char *s; 
 	
 	//Module 1: Initializing Myprintf's arguments 
@@ -821,25 +978,25 @@ void printf(char* format,...)
 						putc(i);
 						break; 
 						
-			case 'd' : i = va_arg(arg,int); 		//Fetch Decimal/Integer argument
-						if(i<0) 
+			case 'd' : t = va_arg(arg,int); 		//Fetch Decimal/Integer argument
+						if(t<0) 
 						{ 
-							i = -i;
+							t = -t;
 							putc('-'); 
 						} 
-						printstring(convert(i,10));
+						printrealstring(convert(t,10));
 						break; 
 						
 			case 'o': i = va_arg(arg,unsigned int); //Fetch Octal representation
-						printstring(convert(i,8));
+						printrealstring(convert(i,8));
 						break; 
 						
 			case 's': s = va_arg(arg,char *); 		//Fetch string
-						printstring(s); 
+						printrealstring(s); 
 						break; 
 						
 			case 'x': i = va_arg(arg,unsigned int); //Fetch Hexadecimal representation
-						printstring(convert(i,16));
+						printrealstring(convert(i,16));
 						break; 
 				
 		}	
@@ -963,14 +1120,14 @@ void setNormalInt(unsigned char num,unsigned long base){
 extern void isr_common_stub();
 extern void irq_common_stub();
 
-void fault_handler(struct Registers *reg){
+void fault_handler(){
 	printstring(" -= KERNEL PANIC =- ");
 	asm volatile("cli");
 	asm volatile("hlt");
 }
 
 
-void irq_handler(struct Registers *reg){
+void irq_handler(){
 	outportb(0x20, 0x20);
 	
 }
