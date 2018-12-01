@@ -40,6 +40,7 @@ void init_pci();
 // SERIAL
 void init_serial();
 
+
 struct Registers{
     unsigned int gs, fs, es, ds;      /* pushed the segs last */
     unsigned int edi, esi, ebp, esp, ebx, edx, ecx, eax;  /* pushed by 'pusha' */
@@ -108,8 +109,11 @@ void kernel_main(){
 	clearScreen();
 	
 	dialog(1,"Kernel created by Sander and Shashwat\nKeyboard: %s\nMouse: %s\nCorefs: %s",(keyboardtype==0?"DISABLED":(keyboardtype==1?"PS/2":"USB")),(mousetype==0?"DISABLED":(mousetype==1?"PS/2":"USB")),(mounttype==0?"DISABLED":(mounttype==1?"CDROM":"FAT32")));
+	
+	printrealstring("KERNEL IS IDLE");
 	for(;;);
 }
+
 
 //
 // SERIAL
@@ -481,16 +485,19 @@ void irq_mouse(){
 		char A = inportb(PS2_DATA);
 		if((A & 0b00000001)>0){
 			printstring("_LEFT");
-		}
-		if((A & 0b00000010)>0){
+//			inputstatus[3] = 1;
+		}else if((A & 0b00000010)>0){
 			printstring("_RIGHT");
-		}
-		if((A & 0b00000100)>0){
+//			inputstatus[3] = 2;
+		}else if((A & 0b00000100)>0){
 			printstring("_MIDDLE");
+//			inputstatus[3] = 3;
 			ccr_x = 50;
 			ccr_y = 50;
 			csr_y = 12;
 			csr_x = 40;
+		}else{
+//			inputstatus[3] = 0;
 		}
 		if((A & 0b00001000)>0){
 			ccr_a = 1;
@@ -527,6 +534,8 @@ void irq_mouse(){
 	if(csr_y>24){
 		csr_y = 20;
 	}
+//	inputstatus[1] = csr_x;
+//	inputstatus[2] = csr_y;
     	temp = csr_y * 80 + csr_x;
     	outportb(0x3D4, 14);
     	outportb(0x3D5, temp >> 8);
@@ -577,13 +586,24 @@ unsigned char kbdus[128] ={
     0,	/* All other keys are undefined */
 };	
 
+unsigned volatile char kbbffr = 0x00;
 void irq_keyboard(){
 	unsigned char x = inportb(PS2_DATA);
 	if((x&0x80)==0){
-		putc(kbdus[x]);
+		//putc(kbdus[x]);
+		unsigned char kkt = kbdus[x];
+		kbbffr = kkt;
 	}
 	outportb(0x20,0x20);
 }
+
+unsigned char getch(){
+	while(kbbffr==0x00){}
+	unsigned char x = kbbffr;
+	kbbffr = 0x00;
+	return x;
+}
+
 
 int init_ps2_keyboard(){
 	
@@ -885,15 +905,9 @@ int dialog(int type,char* message,...){
 	}
 	va_end(arg); 
 	
-	// knoppen tekenen
-	if(type==1){
-		for(int b = 0 ; b < 6 ; b++){
-			videomemory[(15*160)+((b+38)*2)+1] = 0x12;
-		}
-		videomemory[(15*160)+((2+38)*2)+0] = 'O';
-		videomemory[(15*160)+((3+38)*2)+0] = 'K';
-	}
-	
+	volatile int dox = 0;
+	unsigned ch = getch();
+	if(ch=='\n'){printrealstring("__________X___________");}
 	return 0;
 }
 
