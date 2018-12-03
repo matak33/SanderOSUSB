@@ -1,6 +1,6 @@
-nasm -felf32 boot.asm -o boot.o
-gcc -c kernel.c -m32 -o kernel.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
-gcc -T linker.ld -o myos.bin -m32 -ffreestanding -O2 -nostdlib boot.o kernel.o
+nasm -felf32 boot.asm -o boot.o || exit
+gcc -c kernel.c -m32 -o kernel.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra || exit
+gcc -T linker.ld -o myos.bin -m32 -ffreestanding -O2 -nostdlib boot.o kernel.o || exit
 cp myos.bin ../kernel.bin
 cd ..
 rm cdrom.iso
