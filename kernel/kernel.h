@@ -43,12 +43,17 @@ void init_ps2();
 
 // PCI
 void init_pci();
+unsigned long getBARaddress(int bus,int slot,int function,int barNO);
+unsigned short pciConfigReadWord (unsigned char bus, unsigned char slot, unsigned char func, unsigned char offset);
 
 // SERIAL
 void init_serial();
 
 // IDE
 void init_ide(unsigned short BAR);
+
+// XHCI
+void init_xhci(int bus,int slot,int function);
 
 struct Registers{
     unsigned int gs, fs, es, ds;      /* pushed the segs last */
