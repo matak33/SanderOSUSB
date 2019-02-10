@@ -43,12 +43,19 @@ void init_ps2();
 
 // PCI
 void init_pci();
+unsigned long getBARaddress(int bus,int slot,int function,int barNO);
 
 // SERIAL
 void init_serial();
 
 // IDE
 void init_ide(unsigned short BAR);
+
+// OHCI
+void init_ohci(unsigned long BAR);
+
+// UHCI
+void init_uhci(unsigned long BAR);
 
 struct Registers{
     unsigned int gs, fs, es, ds;      /* pushed the segs last */

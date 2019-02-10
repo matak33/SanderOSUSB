@@ -11,8 +11,10 @@ gcc -c dev/ps2.c -m32 -o ps2.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra || ex
 gcc -c dev/memory.c -m32 -o memory.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra || exit
 gcc -c dev/timer.c -m32 -o timer.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra || exit
 gcc -c dev/video.c -m32 -o video.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra || exit
+gcc -c dev/ohci.c -m32 -o ohci.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra || exit
+gcc -c dev/uhci.c -m32 -o uhci.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra || exit
 
-gcc -T linker.ld -o myos.bin -m32 -ffreestanding -O2 -nostdlib boot.o kernel.o io_ports.o interrupts.o com_port.o ide.o pci.o memory.o timer.o video.o isr.o ps2.o || exit
+gcc -T linker.ld -o myos.bin -m32 -ffreestanding -O2 -nostdlib boot.o kernel.o io_ports.o interrupts.o uhci.o ohci.o com_port.o ide.o pci.o memory.o timer.o video.o isr.o ps2.o || exit
 
 cp myos.bin ../kernel.bin
 cd ..
