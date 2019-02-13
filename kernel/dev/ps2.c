@@ -289,6 +289,28 @@ int init_ps2_mouse(){
     	return 0;
 }
 
+unsigned char ledstatus = 0x00;
+void setLeds(unsigned char num,unsigned char caps,unsigned char scrol){
+	if(num){
+		ledstatus = ledstatus | 0b00000100;
+	}else{
+		ledstatus = ledstatus & 0b11111011;
+	}
+	if(caps){
+		ledstatus = ledstatus | 0b00000010;
+	}else{
+		ledstatus = ledstatus & 0b11111101;
+	}
+	if(scrol){
+		ledstatus = ledstatus | 0b00000001;
+	}else{
+		ledstatus = ledstatus & 0b11111110;
+	}
+	writeToFirstPS2Port(0xED);
+	outportb(PS2_DATA,ledstatus);
+	waitforps2ok();
+}
+
 void init_ps2(){
 	char ps2status = getPS2StatusRegisterText();
 	if((ps2status & 0b00000001)>0){

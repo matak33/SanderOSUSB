@@ -37,9 +37,11 @@ void setNormalInt(unsigned char num,unsigned long base);
 void init_timer();
 int getTicks();
 void resetTicks();
+void sleep(unsigned int time);
 
 // PS2
 void init_ps2();
+void setLeds(unsigned char num,unsigned char caps,unsigned char scrol);
 
 // PCI
 void init_pci();

@@ -139,6 +139,7 @@ void atapi_read_sector(IDEDevice dev,unsigned long lba,unsigned char count, unsi
 		printstring("IDE: error\n");
 		return;
 	}
+	printf("IDE: location %x \n",location);
 }
 
 void init_ide_device(IDEDevice device){
