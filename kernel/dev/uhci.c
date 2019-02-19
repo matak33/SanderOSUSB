@@ -31,29 +31,12 @@ void uhci_regdump(){
 
 void uhci_global_reset(){
 	outportw(uhcibase+R_USBCMD,0b0000000000000100);
-	sleep(2);
+	mssleep(5);
 	outportw(uhcibase+R_USBCMD,inportw(uhcibase+R_USBCMD) & 0b1111111111111011);
-	sleep(2);
-	outportw(uhcibase+R_USBCMD,inportw(uhcibase+R_USBCMD) | 0b0000000000000010);
-	sleep(2);
+	mssleep(5);
+//	outportw(uhcibase+R_USBCMD,inportw(uhcibase+R_USBCMD) | 0b0000000000000010);
+//	sleep(2);
 }
-
-#define TD_PTR_QH                       (1 << 1)
-#define TD_PTR_TERMINATE                (1 << 0)
-
-typedef struct UhciQH
-{
-    volatile unsigned long head;
-    volatile unsigned long element;
-
-    // internal fields
-    volatile unsigned long transfer;
-//    Link qhLink;
-//    u32 tdHead;
-//    u32 active;
-//    u8 pad[24];
-} UhciQH;
-UhciQH qh;
 
 
 void init_uhci(unsigned long BAR){
@@ -62,47 +45,54 @@ void init_uhci(unsigned long BAR){
 	if(inportw(uhcibase+R_LEGACY)==0xFFFF){
 		printf("UHCI: BIOS says legacy is disabled\n");
 	}
+	unsigned long memmor = inportl(uhcibase+R_BSEADD);
+	unsigned short memchk =inportw(uhcibase+R_USBCMD) & 1;
 	printf("UHCI: Tell not to use LEGACY\n");
 	outportw(uhcibase+R_LEGACY,0x2000);
 	
 	if(uhci_is_halted()==0){
 		printf("UHCI: UHCI is running while it should not!!!\n");
 		outportw(uhcibase+R_USBCMD,0);
-		sleep(2);
+		mssleep(5);
 		if(uhci_is_halted()==0){
 			printf("UHCI: We are in a unexpected state!\n");
 			for(;;);
 		}else{
 			printf("UCHI: Restored UHCI into a possition we know\n");
 		}
+	}else{
+		memmor = 0;
 	}
 	
 	printf("UHCI: Force reset\n");
 	uhci_global_reset();
 	
-	qh.head = TD_PTR_TERMINATE;
-	qh.element = TD_PTR_TERMINATE;
-	qh.transfer = 0;
 	for(int i = 0 ; i < 1024 ; i++){
-		uhciqueue[i] =  (unsigned long)(TD_PTR_QH | (unsigned long)&qh);
+		uhciqueue[i] =  1;
 	}
 	
 	outportw(uhcibase+R_FRNUMB,0);
-	outportl(uhcibase+R_BSEADD,(unsigned long)&uhciqueue);
+	printf("UHCI: old BSEADD= 0x%x \n",memmor);
+//	if(memchk==0){
+//	if(memmor==0){
+		outportl(uhcibase+R_BSEADD,(unsigned long)&uhciqueue);
+//	} else {
+//		outportl(uhcibase+R_BSEADD,memmor);
+//	}
 	outportb(uhcibase+R_SOFMOD,0x40);
 	
 	outportw(uhcibase+R_PORTS1,inportw(uhcibase+R_PORTS1) | 0b0000001000000000);
 	outportw(uhcibase+R_PORTS2,inportw(uhcibase+R_PORTS2) | 0b0000001000000000);
 	
-	sleep(2);
+	mssleep(5);
 	
 	outportw(uhcibase+R_PORTS1,(inportw(uhcibase+R_PORTS1) & 0b1111110111111111) | 0b0000000000000100);
 	outportw(uhcibase+R_PORTS2,(inportw(uhcibase+R_PORTS2) & 0b1111110111111111) | 0b0000000000000100);
 	
-	sleep(2);
+	mssleep(5);
 	
-//	printf("UHCI: lets go!\n");
-//	outportw(uhcibase+R_USBCMD,inportw(uhcibase+R_USBCMD) | 1);
+	printf("UHCI: lets go!\n");
+	outportw(uhcibase+R_USBCMD,inportw(uhcibase+R_USBCMD) | 1);
 	
 	sleep(2);
 	
@@ -117,6 +107,6 @@ void init_uhci(unsigned long BAR){
 	uhci_regdump();
 	
 	
-	if(inportw(uhcibase+R_PORTS1)&1){setLeds(1,0,1);printf("UHCI: PORT1 detected\n");for(;;);}
-	if(inportw(uhcibase+R_PORTS2)&1){setLeds(1,0,1);printf("UHCI: PORT2 detected\n");for(;;);}
+	if(inportw(uhcibase+R_PORTS1)&0b0000000000000011){setLeds(1,0,1);printf("UHCI: PORT1 detected\n");for(;;);}
+	if(inportw(uhcibase+R_PORTS2)&0b0000000000000011){setLeds(1,0,1);printf("UHCI: PORT2 detected\n");for(;;);}
 }

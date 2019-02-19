@@ -35,6 +35,9 @@ void setNormalInt(unsigned char num,unsigned long base);
 
 // TIMER MOD
 void init_timer();
+int getmsticks();
+void resetmsticks();
+void mssleep(unsigned int time);
 int getTicks();
 void resetTicks();
 void sleep(unsigned int time);
