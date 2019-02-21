@@ -32,10 +32,7 @@ void uhci_regdump(){
 void uhci_global_reset(){
 	outportw(uhcibase+R_USBCMD,0b0000000000000100);
 	mssleep(5);
-	outportw(uhcibase+R_USBCMD,inportw(uhcibase+R_USBCMD) & 0b1111111111111011);
-	mssleep(5);
-//	outportw(uhcibase+R_USBCMD,inportw(uhcibase+R_USBCMD) | 0b0000000000000010);
-//	sleep(2);
+	outportw(uhcibase+R_USBCMD,0);
 }
 
 
@@ -73,21 +70,24 @@ void init_uhci(unsigned long BAR){
 	
 	outportw(uhcibase+R_FRNUMB,0);
 	printf("UHCI: old BSEADD= 0x%x \n",memmor);
-//	if(memchk==0){
+	if(memchk==0){
 //	if(memmor==0){
 		outportl(uhcibase+R_BSEADD,(unsigned long)&uhciqueue);
-//	} else {
-//		outportl(uhcibase+R_BSEADD,memmor);
-//	}
+	} else {
+		for(int i = 0 ; i < 10 ; i++){
+			printf("%x ",((unsigned char*)memmor)[i]);
+		}
+		outportl(uhcibase+R_BSEADD,memmor);
+	}
 	outportb(uhcibase+R_SOFMOD,0x40);
 	
-	outportw(uhcibase+R_PORTS1,inportw(uhcibase+R_PORTS1) | 0b0000001000000000);
-	outportw(uhcibase+R_PORTS2,inportw(uhcibase+R_PORTS2) | 0b0000001000000000);
+	outportw(uhcibase+R_PORTS1,0b0000001000000100);
+  	outportw(uhcibase+R_PORTS2,0b0000001000000100);
 	
 	mssleep(5);
 	
-	outportw(uhcibase+R_PORTS1,(inportw(uhcibase+R_PORTS1) & 0b1111110111111111) | 0b0000000000000100);
-	outportw(uhcibase+R_PORTS2,(inportw(uhcibase+R_PORTS2) & 0b1111110111111111) | 0b0000000000000100);
+	outportw(uhcibase+R_PORTS1,0b0000000000000100);
+  	outportw(uhcibase+R_PORTS2,0b0000000000000100);
 	
 	mssleep(5);
 	
@@ -96,9 +96,21 @@ void init_uhci(unsigned long BAR){
 	
 	sleep(2);
 	
-	if( inportw(uhcibase+R_USBSTS) & 0b0000000000011010){
+	if( inportw(uhcibase+R_USBSTS) & 0b0000000000010000){
 		setLeds(1,1,1);
-		printf("UHCI: There is a error occured\n");
+		printf("UHCI: Host controller process error\n");
+		for(;;);
+	}
+	
+	if( inportw(uhcibase+R_USBSTS) & 0b0000000000001000){
+		setLeds(1,1,1);
+		printf("UHCI: Host system error\n");
+		for(;;);
+	}
+	
+	if( inportw(uhcibase+R_USBSTS) & 0b0000000000000010){
+		setLeds(1,1,1);
+		printf("UHCI: Error interrupt\n");
 		for(;;);
 	}
 	
