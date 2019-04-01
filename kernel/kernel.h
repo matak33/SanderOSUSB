@@ -110,4 +110,6 @@ typedef struct{
     unsigned int eip, cs, eflags, useresp, ss;   /* pushed by the processor automatically */ 
 }Register;
 
+void init_ehci(unsigned long BAR);
+
 //void dirdev();

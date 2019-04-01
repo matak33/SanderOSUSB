@@ -70,7 +70,7 @@ void special_handler(Register *r){
 	outportb(0xA0,0x20);
 	if(r->eax==0x04){ // F-WRITE
 		if(r->ebx==1){ // TO STDOUT
-			for(int i = 0 ; i < r->edx ; i++){
+			for(unsigned int i = 0 ; i < r->edx ; i++){
 				printf("%c",((unsigned char*)r->ecx)[i]);
 			}
 		}else{ // TO FILE
