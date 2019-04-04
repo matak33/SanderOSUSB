@@ -7,7 +7,7 @@
 
 extern void timerirq();
 
-int clock = 0;
+volatile int clock = 0;
 volatile int ticks = 0;
 
 int getTicks(){
@@ -16,6 +16,23 @@ int getTicks(){
 
 void resetTicks(){
 	ticks = 0;
+}
+
+void resetMSTicks(){
+	clock = 0;
+}
+
+int getMSTicks(){
+	return clock;
+}
+
+void sleep(int ms){
+	clock=0;
+	again:
+	if(ms==clock){
+		return;
+	}
+	goto again;
 }
 
 void irq_timer(){

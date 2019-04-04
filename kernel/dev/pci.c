@@ -26,6 +26,15 @@ unsigned short pciConfigReadWord (unsigned char bus, unsigned char slot, unsigne
     return (tmp);
 }
 
+
+unsigned long getBARaddress(int bus,int slot,int function,int barNO){
+	unsigned long result = 0;
+	unsigned long partA = pciConfigReadWord(bus,slot,function,barNO);
+	unsigned long partB = pciConfigReadWord(bus,slot,function,barNO+2);
+	result = ((partB<<16) | ((partA) & 0xffff));
+	return result;
+}
+
 void init_pci(){
 	printstring("PCI: detecting devices....\n");
 	for(int bus = 0 ; bus < 256 ; bus++){
@@ -157,7 +166,8 @@ void init_pci(){
 						}else if(sublca==0x03){
 							printstring(" USB controller, ");
 							if(subsub==0x00){
-								printstring("UHCI [USB 1]");
+								printstring("UHCI [USB 1]\n");
+								init_uhci(getBARaddress(bus,slot,function,0x20));
 							}else if(subsub==0x10){
 								printstring("OHCI [USB 1]");
 							}else if(subsub==0x20){
