@@ -9,6 +9,14 @@ void outportw(unsigned short _port, unsigned short _data);
 unsigned long inportl(unsigned short _port);
 void outportl(unsigned short _port, unsigned long _data);
 void kernel_main();
+void init_acpi();
+void init_uhci(int bus,int slot,int function);
+void init_ehci(int bus,int slot,int function);
+void init_xhci(unsigned long BAR1,unsigned long BAR2,unsigned long capabilityregs);
+void sleep(int ms);
+unsigned long getBARaddress(int bus,int slot,int function,int barNO);
+unsigned short pciConfigReadWord (unsigned char bus, unsigned char slot, unsigned char func, unsigned char offset);
+char getpixel(int x,int y);
 
 // MEMORY
 void *malloc(unsigned long size);
