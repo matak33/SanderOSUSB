@@ -367,7 +367,7 @@ void init_ps2(){
 		printstring("PS2: keyboard enabled!\n");
 	}else{
 		printstring("PS2: keyboard disabled!\n");
-		for(;;);
+		//for(;;);
 	}
 	if(ps2onceagain){
 		if(init_ps2_mouse()){
