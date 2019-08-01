@@ -9,6 +9,8 @@ void irq_ehci(){
 	outportb(0xA0,0x20);
 }
 
+unsigned long hqbuffer[1024];
+
 void ehci_init(int bus,int slot,int function){
 	unsigned long baseaddr 		= getBARaddress(bus,slot,function,0x10);
 	unsigned long HCIVERSION 	= baseaddr+2;
@@ -31,7 +33,8 @@ void ehci_init(int bus,int slot,int function){
 			break;
 		}
 	}
-	((unsigned long*)USBINTR)[0] = 0b0111111;
+//	((unsigned long*)USBINTR)[0] = 0b0111111;
+	((unsigned long*)PERIODICLISTBASE)[0] = (unsigned long)&hqbuffer;
 	if(pciConfigReadWord(bus,slot,function,0x10)&0b110){
 		printf("EHCI: warning 64bit possible\n");
 	}
@@ -52,15 +55,27 @@ void ehci_init(int bus,int slot,int function){
 	printf("EHCI: Capability Registers Length %x \n",((unsigned char*)baseaddr)[0x00]);
 	printf("EHCI: Host Controller Interface Version Number %x \n",((unsigned short*)HCIVERSION)[0x00]);
 	printf("EHCI: Structural Parameters %x \n",((unsigned long*)HCSPARAMS)[0x00]);
-	printf("EHCI: Number of avail ports: %x \n",((unsigned long*)HCSPARAMS)[0x00]&0b01111);
+	int portscount = ((unsigned long*)HCSPARAMS)[0x00]&0b01111;
+	printf("EHCI: Number of avail ports: %x \n",portscount);
 	printf("EHCI: USBCMD %x \n",((unsigned long*)USBCMD)[0]);
 	printf("EHCI: USBSTS %x \n",((unsigned long*)USBSTS)[0]);
 	printf("EHCI: USBINTR %x \n",((unsigned long*)USBINTR)[0]);
-	((unsigned long*)USBCMD)[0] |= 1;printf("EHCI:debugA\n");
-	((unsigned long*)CONFIGFLAG)[0] = 1;printf("EHCI:debugB\n");
+	((unsigned long*)USBCMD)[0] |= 1;
+	((unsigned long*)CONFIGFLAG)[0] = 1;
 	printf("EHCI: USBCMD %x \n",((unsigned long*)USBCMD)[0]);
 	printf("EHCI: USBSTS %x \n",((unsigned long*)USBSTS)[0]);
 	printf("EHCI: USBINTR %x \n",((unsigned long*)USBINTR)[0]);
+	resetTicks();
+	while(1){
+		if(getTicks()==10){
+			break;
+		}
+	}
+	for(int i = 0 ; i < portscount ; i++){
+		unsigned long valz = virtregaddr+0x44+(4*i-1);
+		printf("EHCI: portcount #%x with value %x \n",i,((unsigned long*)valz)[0]);
+		((unsigned long*)valz)[0] = 0b0000101100000001100;
+	}
 	printf("END OF OPERATIONS");
 	for(;;);
 }

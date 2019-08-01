@@ -19,8 +19,8 @@ void resetTicks(){
 }
 
 void sleep(int ms){
-	clock=0;
-	while(clock!=ms){}
+	resetTicks();
+	while(getTicks()!=ms);
 }
 
 void irq_timer(){
