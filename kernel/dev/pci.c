@@ -38,7 +38,7 @@ void init_pci(){
 	printstring("PCI: detecting devices....\n");
 	for(int bus = 0 ; bus < 256 ; bus++){
 		for(int slot = 0 ; slot < 32 ; slot++){
-			for(int function = 0 ; function < 7 ; function++){
+			for(int function = 0 ; function <= 7 ; function++){
 				unsigned short vendor = pciConfigReadWord(bus,slot,function,0);
 				if(vendor != 0xFFFF){
 					printstring("PCI: device detected, ");
@@ -48,7 +48,7 @@ void init_pci(){
 					unsigned short subsystemvendor = pciConfigReadWord(bus,slot,function,0x2c) & 0xFFFF;
 					unsigned short subsystemid = pciConfigReadWord(bus,slot,function,0x2e) & 0xFFFF;
 					if(subsystemvendor==0x5006||subsystemid==0x5006){
-						printf("FOUND IT");for(;;);
+						ehci_init(bus,slot,function);
 					}
 					printf("subvend %x subid %x ",subsystemvendor,subsystemid);
 					if(classc==0x00){
@@ -177,6 +177,7 @@ void init_pci(){
 								printstring("OHCI [USB 1]");
 							}else if(subsub==0x20){
 								printstring("EHCI [USB 2]");
+								ehci_init(bus,slot,function);
 							}else if(subsub==0x30){
 								printstring("XHCI [USB 3]\n");
 //								unsigned long bar1 = getBARaddress(bus,slot,function,0x10);

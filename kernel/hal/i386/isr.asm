@@ -61,13 +61,17 @@ cmp al,0
 je .again
 ret
 
+global ehciirq
+extern irq_ehci
+ehciirq:
+	call irq_ehci
+    	iret
+
 global mouseirq
 extern irq_mouse
 mouseirq:
-	
 	call irq_mouse
-	
-    iret
+    	iret
     
 
 global timerirq
