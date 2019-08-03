@@ -73,9 +73,25 @@ void ehci_init(int bus,int slot,int function){
 	}
 	for(int i = 0 ; i < portscount ; i++){
 		unsigned long valz = virtregaddr+0x44+(4*i-1);
-		printf("EHCI: portcount #%x with value %x \n",i,((unsigned long*)valz)[0]);
-		((unsigned long*)valz)[0] = 0b0000101100000001100;
+		unsigned long dtas = ((unsigned long*)valz)[0];
+		if(dtas&0x000FFF){
+			printf("EHCI: portcount #%x with value %x has a connection!!!\n",i,dtas);
+			((unsigned long*)valz)[0] |= 0b100000000;
+			resetTicks();
+			while(1){
+				if(getTicks()==2){break;}
+			}
+			((unsigned long*)valz)[0] &= 0b111111111111111111111111011111111;
+			dtas = ((unsigned long*)valz)[0];
+			if(dtas&1){
+				printf("EHCI-PORT#%x: Initialisation complete with status %x \n",i,dtas);
+				((unsigned long*)valz)[0] |= 0b01000000000000000; // output green when possible
+			}else{
+				printf("EHCI-PORT#%x: Initialisation failed with status %x \n",i,dtas);
+				((unsigned long*)valz)[0] |= 0b00100000000000000; // output green when possible
+			}
+		}
 	}
 	printf("END OF OPERATIONS");
-	for(;;);
+	getch();
 }
