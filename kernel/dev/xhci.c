@@ -39,14 +39,17 @@ void init_xhci(int bus,int slot,int function){
 	printf("XHCI: status %x \n",USBSTS);
 	resetTicks();
 	while(1){if(getTicks()==5){break;}}
-	for(int n = 0 ; n < 10 ; n++){
+	for(int n = 1 ; n < 11 ; n++){
 		unsigned long tx = (n-1)*0x10;
 		unsigned long PORTSC_addr = operreg+0x400+tx;
 		((unsigned long*)PORTSC_addr)[0] = 0b1000000010;
-	resetTicks();
-	while(1){if(getTicks()==2){break;}}
+		resetTicks();
+		while(1){if(getTicks()==3){break;}}
 		unsigned long PORTSC = ((unsigned long*)PORTSC_addr)[0];
 		printf("XHCI: PORTSC#%x: %x \n",n,PORTSC);
+		if(PORTSC&1){
+			printf("XHCI: port detected at %x \n",n);
+		}
 	}
 	USBSTS = ((unsigned long*)USBSTS_addr)[0];
 	printf("XHCI: status %x \n",USBSTS);

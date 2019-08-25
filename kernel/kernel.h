@@ -21,6 +21,7 @@ void *memset(void *str, int c, int n);
 int memcmp( char *str1, char *str2, int n);
 
 void ehci_init(int bus,int slot,int function);
+void uhci_init(int bus,int slot,int function);
 void init_xhci(int bus,int slot,int function);
 // BLOCKDEVICE
 //void init_blockdevice();

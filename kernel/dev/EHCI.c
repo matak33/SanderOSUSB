@@ -76,10 +76,10 @@ void ehci_init(int bus,int slot,int function){
 		unsigned long dtas = ((unsigned long*)valz)[0];
 		if(dtas&0x000FFF){
 			printf("EHCI: portcount #%x with value %x has a connection!!!\n",i,dtas);
-			((unsigned long*)valz)[0] |= 0b100000000;
+			((unsigned long*)valz)[0] |= 0b10000100000000;
 			resetTicks();
 			while(1){
-				if(getTicks()==2){break;}
+				if(getTicks()==3){break;}
 			}
 			((unsigned long*)valz)[0] &= 0b111111111111111111111111011111111;
 			dtas = ((unsigned long*)valz)[0];
@@ -88,7 +88,9 @@ void ehci_init(int bus,int slot,int function){
 				((unsigned long*)valz)[0] |= 0b01000000000000000; // output green when possible
 			}else{
 				printf("EHCI-PORT#%x: Initialisation failed with status %x \n",i,dtas);
-				((unsigned long*)valz)[0] |= 0b00100000000000000; // output green when possible
+				if(dtas&0b010000000000){
+					printf("EHCI-PORT#%x: Device is a low speed device \n",i);
+				}
 			}
 		}
 	}
