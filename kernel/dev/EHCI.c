@@ -1,6 +1,7 @@
 #include "../kernel.h"
 
-extern void mouseirq();
+extern unsigned int uhci_locs[10];
+extern unsigned int uhci_locs_cnt;
 
 void irq_ehci(){
 	printf("EHCI:           --- INTERRUPT --- \n");
@@ -39,7 +40,6 @@ void ehci_init(int bus,int slot,int function){
 		printf("EHCI: warning 64bit possible\n");
 	}
 	int intnummer = pciConfigReadWord ( bus, slot, function, 0x3c ) & 0xFF;
-	setNormalInt(intnummer,(unsigned long)mouseirq);
 	printf("EHCI: assigned int number %x \n",intnummer);
 	printf("EHCI: serial release number %x \n",pciConfigReadWord(bus,slot,function,0x60)&0xFF);
 	printf("EHCI: framelength %x \n",pciConfigReadWord(bus,slot,function,0x61)&0xFF);
@@ -76,16 +76,45 @@ void ehci_init(int bus,int slot,int function){
 		unsigned long dtas = ((unsigned long*)valz)[0];
 		if(dtas&0x000FFF){
 			printf("EHCI: portcount #%x with value %x has a connection!!!\n",i,dtas);
-			((unsigned long*)valz)[0] |= 0b10000100000000;
-			resetTicks();
-			while(1){
-				if(getTicks()==3){break;}
+			// are we already resetting?
+			if(dtas&0b100000000){
+				printf("EHCI: portcount #%x EHCI hardware made port reset, stop it\n",i);
+				// stop the reset
+				dtas = ((unsigned long*)valz)[0];
+				unsigned long flagtype = 0b100000000;
+				dtas &= (~flagtype);
+				((unsigned long*)valz)[0] = dtas;
 			}
-			((unsigned long*)valz)[0] &= 0b111111111111111111111111011111111;
+			// wait a bit...
+			printf("PRESS KEY TO CONTINUE\n");
+			getch();
+			
+			// now we tell how we want things...
+			dtas = ((unsigned long*)valz)[0];
+			dtas |= 0b100; 		 	// port on active
+			dtas |= 0b100000000;		// port reset
+			dtas |= 0b1000000000000; 	// port power on
+			dtas |= 0b10000000000000; 	// port ownership on
+			((unsigned long*)valz)[0] = dtas;
+			
+			// wait a bit...
+			printf("PRESS KEY TO CONTINUE\n");
+			getch();
+			
+			// stop the reset
+			dtas = ((unsigned long*)valz)[0];
+			unsigned long flagtype = 0b100000000;
+			dtas &= (~flagtype);
+			((unsigned long*)valz)[0] = dtas;
+			
+			// wait a bit...
+			printf("PRESS KEY TO CONTINUE\n");
+			getch();
+			
 			dtas = ((unsigned long*)valz)[0];
 			if(dtas&1){
 				printf("EHCI-PORT#%x: Initialisation complete with status %x \n",i,dtas);
-				((unsigned long*)valz)[0] |= 0b01000000000000000; // output green when possible
+				//((unsigned long*)valz)[0] |= 0b01000000000000000; // output green when possible
 			}else{
 				printf("EHCI-PORT#%x: Initialisation failed with status %x \n",i,dtas);
 				if(dtas&0b010000000000){
@@ -94,6 +123,7 @@ void ehci_init(int bus,int slot,int function){
 			}
 		}
 	}
+	
 	printf("END OF OPERATIONS");
 	getch();
 }

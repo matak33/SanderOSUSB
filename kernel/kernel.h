@@ -85,6 +85,7 @@ void init_ps2();
 // PCI
 void init_pci();
 unsigned long getBARaddress(int bus,int slot,int function,int barNO);
+unsigned short pciConfigReadWord (unsigned char bus, unsigned char slot, unsigned char func, unsigned char offset);
 
 // SERIAL
 void init_serial();
@@ -93,8 +94,6 @@ void init_serial();
 void init_ide(unsigned short BAR);
 void init_ide2();
 void ahci_init(int bus,int slot,int function);
-
-
 
 typedef struct{
 
@@ -125,6 +124,7 @@ typedef struct{
 	//
 	
 	unsigned char readonly;
+	unsigned char filesystemknown;
 	
 	//
 	// Advanced

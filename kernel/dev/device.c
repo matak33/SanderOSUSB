@@ -91,3 +91,4 @@ void fread(char* path,unsigned char* buffer){
 		}
 	}
 }
+

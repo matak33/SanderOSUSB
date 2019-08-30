@@ -22,8 +22,10 @@ void init_xhci(int bus,int slot,int function){
 	unsigned long USBCMD_addr = operreg;
 	unsigned long USBSTS_addr = operreg+4;
 	unsigned long DCBAAP_addr = operreg+0x30;
+	unsigned long CONFIG_addr = operreg+0x38;
 	unsigned long USBCMD = ((unsigned long*)USBCMD_addr)[0];
-	printf("XHCI: preforming reset... old values: %x \n",USBCMD);
+	unsigned long CONFIG = ((unsigned long*)CONFIG_addr)[0];
+	printf("XHCI: preforming reset... old values: %x [ %x ] \n",USBCMD,CONFIG);
 	((unsigned long*)USBCMD_addr)[0] = 2;
 	resetTicks();
 	while(1){if(getTicks()==2){break;}}
@@ -33,6 +35,7 @@ void init_xhci(int bus,int slot,int function){
 	unsigned long tkap = malloc(256*2);
 	((unsigned long*)DCBAAP_addr)[0] = 0;
 	((unsigned long*)DCBAAP_addr)[0] = tkap;
+	((unsigned long*)CONFIG_addr)[0] = 5;
 	((unsigned long*)USBCMD_addr)[0] = 1;
 	
 	unsigned long USBSTS = ((unsigned long*)USBSTS_addr)[0];
@@ -42,7 +45,10 @@ void init_xhci(int bus,int slot,int function){
 	for(int n = 1 ; n < 11 ; n++){
 		unsigned long tx = (n-1)*0x10;
 		unsigned long PORTSC_addr = operreg+0x400+tx;
-		((unsigned long*)PORTSC_addr)[0] = 0b1000000010;
+		((unsigned long*)PORTSC_addr)[0] = 0b1000010000;
+		resetTicks();
+		while(1){if(getTicks()==3){break;}}
+		((unsigned long*)PORTSC_addr)[0] = ((unsigned long*)PORTSC_addr)[0] & 0b11111111111111111111111111101111;
 		resetTicks();
 		while(1){if(getTicks()==3){break;}}
 		unsigned long PORTSC = ((unsigned long*)PORTSC_addr)[0];
