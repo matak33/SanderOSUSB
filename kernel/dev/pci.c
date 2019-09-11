@@ -172,12 +172,13 @@ void init_pci(){
 						}else if(sublca==0x03){
 							printstring(" USB controller, ");
 							if(subsub==0x00){
-								printstring("UHCI [USB 1]");
+								printstring("UHCI [USB 1]\n");
 								uhci_init(bus,slot,function);
 							}else if(subsub==0x10){
-								printstring("OHCI [USB 1]");
+								printstring("OHCI [USB 1]\n");
+								ohci_init(bus,slot,function);
 							}else if(subsub==0x20){
-								printstring("EHCI [USB 2]");
+								printstring("EHCI [USB 2]\n");
 								ehci_init(bus,slot,function);
 							}else if(subsub==0x30){
 								printstring("XHCI [USB 3]\n");

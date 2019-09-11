@@ -28,9 +28,11 @@ void init_xhci(int bus,int slot,int function){
 	printf("XHCI: preforming reset... old values: %x [ %x ] \n",USBCMD,CONFIG);
 	((unsigned long*)USBCMD_addr)[0] = 2;
 	resetTicks();
-	while(1){if(getTicks()==2){break;}}
-	((unsigned long*)USBCMD_addr)[0] = 0;
+	while(getTicks()!=10);
+	((unsigned long*)USBCMD_addr)[0] &= (~0b10);
 	printf("XHCI: reset finished\n");
+	resetTicks();
+	while(getTicks()!=10);
 	
 	unsigned long tkap = malloc(256*2);
 	((unsigned long*)DCBAAP_addr)[0] = 0;
@@ -41,21 +43,25 @@ void init_xhci(int bus,int slot,int function){
 	unsigned long USBSTS = ((unsigned long*)USBSTS_addr)[0];
 	printf("XHCI: status %x \n",USBSTS);
 	resetTicks();
-	while(1){if(getTicks()==5){break;}}
+	while(getTicks()!=10);
 	for(int n = 1 ; n < 11 ; n++){
 		unsigned long tx = (n-1)*0x10;
 		unsigned long PORTSC_addr = operreg+0x400+tx;
 		((unsigned long*)PORTSC_addr)[0] = 0b1000010000;
+		
 		resetTicks();
-		while(1){if(getTicks()==3){break;}}
+		while(getTicks()!=10);
 		((unsigned long*)PORTSC_addr)[0] = ((unsigned long*)PORTSC_addr)[0] & 0b11111111111111111111111111101111;
+		
 		resetTicks();
-		while(1){if(getTicks()==3){break;}}
+		while(getTicks()!=10);
+		
 		unsigned long PORTSC = ((unsigned long*)PORTSC_addr)[0];
 		printf("XHCI: PORTSC#%x: %x \n",n,PORTSC);
 		if(PORTSC&1){
 			printf("XHCI: port detected at %x \n",n);
 		}
+		
 	}
 	USBSTS = ((unsigned long*)USBSTS_addr)[0];
 	printf("XHCI: status %x \n",USBSTS);
