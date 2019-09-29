@@ -27,3 +27,10 @@ The following filesystems will be supported:
 * EXT2
 
 To build the kernel, go to the kernel folder and run build.sh
+
+
+With build.sh patch
+
+Building network driver for e100 
+
+Please patch the ahci driver with useless return on 
